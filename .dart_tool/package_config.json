@@ -459,7 +459,7 @@
     },
     {
       "name": "zuraffa",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zuraffa-7.4.1",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zuraffa-7.4.2",
       "packageUri": "lib/",
       "languageVersion": "3.11"
     },
@@ -471,8 +471,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.13.7",
+  "generatorVersion": "3.14.0",
   "flutterRoot": "file:///usr/local/share/flutter",
-  "flutterVersion": "3.47.9",
+  "flutterVersion": "3.50.0",
   "pubCache": "file:///Users/arrrrny/.pub-cache"
 }

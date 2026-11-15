@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "zuraffa_observability",
-      "version": "7.4.1",
+      "version": "7.4.2",
       "dependencies": [
         "logging",
         "opentelemetry",
@@ -58,7 +58,7 @@
     },
     {
       "name": "zuraffa",
-      "version": "7.4.1",
+      "version": "7.4.2",
       "dependencies": [
         "analyzer",
         "archive",
