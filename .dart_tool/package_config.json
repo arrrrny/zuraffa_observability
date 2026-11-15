@@ -3,19 +3,19 @@
   "packages": [
     {
       "name": "_fe_analyzer_shared",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/_fe_analyzer_shared-110.0.0",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/_fe_analyzer_shared-111.0.0",
       "packageUri": "lib/",
       "languageVersion": "3.13"
     },
     {
       "name": "analyzer",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/analyzer-14.6.0",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/analyzer-14.7.0",
       "packageUri": "lib/",
       "languageVersion": "3.13"
     },
     {
       "name": "archive",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/archive-4.5.2",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/archive-4.7.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -159,7 +159,7 @@
     },
     {
       "name": "hive_ce",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/hive_ce-2.22.0",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/hive_ce-2.23.3",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -189,7 +189,7 @@
     },
     {
       "name": "isolate_channel",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/isolate_channel-0.6.1",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/isolate_channel-0.6.2",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -447,13 +447,13 @@
     },
     {
       "name": "zorphy",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zorphy-2.4.4",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zorphy-2.4.6",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "zorphy_annotation",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zorphy_annotation-2.4.4",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zorphy_annotation-2.4.6",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
