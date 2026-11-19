@@ -140,7 +140,6 @@ class ZuraffaObservability {
     if (reportUncaughtAsSpan) {
       FailureReporterRegistry.instance.reportFailure(
         UnknownFailure.from(error, stackTrace),
-        stackTrace: stackTrace,
       );
     }
   }

@@ -70,12 +70,34 @@ String? _attr(Map<String, dynamic> record, String key) {
   return null;
 }
 
+/// A [FailureReporter] that records every [FailureReport] it is handed.
+///
+/// The capture span path runs `FailureReporterRegistry → OtelFailureReporter →
+/// OTLP /v1/traces`, so a span assertion would have to decode the protobuf
+/// trace payload. This capturing reporter observes the same reports one step
+/// earlier — at the registry boundary, which is exactly what
+/// `reportUncaughtAsSpan` controls — so the test fails if that branch is
+/// removed or broken, without coupling to the trace wire format.
+class _CapturingFailureReporter extends FailureReporter {
+  final List<FailureReport> reports = <FailureReport>[];
+
+  @override
+  String get id => 'test-capturing-failure-reporter';
+
+  @override
+  Future<void> reportBatch(List<FailureReport> batch) async {
+    reports.addAll(batch);
+  }
+}
+
 void main() {
   group('ZuraffaObservability.installGlobalErrorCapture', () {
     late _CapturingClient client;
+    late _CapturingFailureReporter failureReporter;
 
     setUp(() async {
       client = _CapturingClient();
+      failureReporter = _CapturingFailureReporter();
 
       // Reset the failure registry and the capture state so each test starts
       // clean and arms a fresh zone.
@@ -88,6 +110,7 @@ void main() {
       // path under test is identical either way. A short flush interval keeps
       // the test fast (the production default is 5s).
       ZuraffaObservability.init();
+      await Zuraffa.addFailureReporter(failureReporter);
       await Zuraffa.addFailureReporter(
         OtelFailureReporter(
           collectorEndpoint: Uri.parse('http://fake/v1/traces'),
@@ -142,31 +165,68 @@ void main() {
     test(
       'a reported failure entry is produced when the span flag is on',
       () async {
-        // reportUncaughtAsSpan defaults to true: the uncaught error is also
-        // routed through FailureReporterRegistry as an UnknownFailure.
+        // reportUncaughtAsSpan defaults to true: the uncaught error is routed
+        // through FailureReporterRegistry as an UnknownFailure, which the
+        // registered OtelFailureReporter turns into a `failure.*` span. We
+        // assert that a failure report actually reached a registered reporter —
+        // the registry is the single gate this flag controls — instead of
+        // re-reading the SEVERE log path that test 1 already covers.
         final error = ArgumentError('boom-as-failure');
         final zone = await ZuraffaObservability.installGlobalErrorCapture();
         zone.run(() {
           scheduleMicrotask(() => throw error);
         });
 
+        // Let the microtask fire and the capture path enqueue the failure.
         await Future<void>.delayed(const Duration(milliseconds: 120));
 
-        // Flush the failure queue and assert the capture reached telemetry.
+        // Flush the failure queue so the captured reporter receives the report.
         await Zuraffa.flushFailureReports();
-        await Future<void>.delayed(const Duration(milliseconds: 120));
 
-        final records = _logRecords(client);
+        final reported = failureReporter.reports.where(
+          (r) => r.failure is UnknownFailure,
+        );
         expect(
-          records.any(
-            (r) =>
-                _attr(r, 'exception.message')?.contains('boom-as-failure') ??
-                false,
-          ),
-          isTrue,
+          reported,
+          isNotEmpty,
           reason:
-              'the uncaught error must reach telemetry through the capture '
-              'path',
+              'the uncaught error must be reported through the failure '
+              'reporter path (→ failure.* span) when reportUncaughtAsSpan is '
+              'on',
+        );
+        final report = reported.first;
+        expect(report.failure.message, contains('boom-as-failure'));
+        expect(
+          report.failure.stackTrace ?? report.stackTrace,
+          isNotNull,
+          reason: 'the report must carry the originating stack trace',
+        );
+      },
+    );
+
+    test(
+      'no failure entry is produced when the span flag is off',
+      () async {
+        // reportUncaughtAsSpan: false must skip the failure-reporter branch
+        // entirely — the uncaught error is still logged (test 1's SEVERE path),
+        // but nothing reaches the failure reporter queue.
+        final error = ArgumentError('boom-no-span');
+        final zone = await ZuraffaObservability.installGlobalErrorCapture(
+          reportUncaughtAsSpan: false,
+        );
+        zone.run(() {
+          scheduleMicrotask(() => throw error);
+        });
+
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        await Zuraffa.flushFailureReports();
+
+        expect(
+          failureReporter.reports,
+          isEmpty,
+          reason:
+              'with reportUncaughtAsSpan off, no failure report may reach the '
+              'reporters',
         );
       },
     );

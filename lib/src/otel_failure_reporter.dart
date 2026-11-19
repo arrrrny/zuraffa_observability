@@ -159,8 +159,12 @@ class OtelFailureReporter extends FailureReporter {
           );
         }
 
-        // Record exception with stack trace
-        final st = report.stackTrace;
+        // Record exception with stack trace. Prefer the report-level stack
+        // trace, but fall back to the one carried on the failure itself so a
+        // caller that only set `UnknownFailure.from(error, stackTrace)` still
+        // gets the span enriched (the capture path passes it there, not on the
+        // report).
+        final st = report.stackTrace ?? report.failure.stackTrace;
         if (st != null) {
           span.recordException(report.failure, stackTrace: st);
         }
