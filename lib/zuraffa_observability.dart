@@ -42,3 +42,4 @@ export 'src/otel_adapter.dart';
 export 'src/otel_failure_reporter.dart';
 export 'src/otel_tracer.dart';
 export 'src/telemetry_hook.dart';
+export 'src/test_capture.dart';
