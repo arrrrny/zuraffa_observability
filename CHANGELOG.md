@@ -1,6 +1,6 @@
-## 8.0.0 - 2026-11-19
+## 7.6.0 - 2026-11-19
 
-- **8.0.0 (breaking)** — the OTel base moved from the deprecated
+- **7.6.0** — the OTel base moved from the deprecated
   `opentelemetry` package (Workiva re-export shim, `^0.18.11`) to
   `dartastic_opentelemetry` 1.1.0-beta.17, the CNCF donation candidate whose
   people now are the OpenTelemetry Dart & Flutter SIG (issue
