@@ -1,3 +1,13 @@
+## Unreleased
+
+- `ZuraffaObservability.installGlobalErrorCapture()` — the pure-Dart half of
+  global error capture (issue #1): forks the current zone with an
+  uncaught-error handler so an error that escapes every `try`/`catch` is
+  logged at `SEVERE` (→ `OtelLogExporter`, batched to OTLP `/v1/logs`) and,
+  with `reportUncaughtAsSpan: true`, reported as a `failure.*` span via
+  `FailureReporterRegistry`. README documents the full Flutter capture wiring
+  across `zuraffa` / `zuraffa_flutter` / `zuraffa_observability`.
+
 ## 7.5.0 - 2026-11-15
 
 Release 7.5.0: Signal-backed view-state migration template with SignalScope ownership (#2076); signal listener/subscription cleanup on eager-delivery throw (#2081, #2083); UseCase/StreamUseCase catch-all SEVERE logs now carry the cause (#2077, #2079); dependencies upgraded and pinned to latest resolvable.
