@@ -25,8 +25,7 @@ void main() {
       await OTel.reset();
     });
 
-    test('a consumer-built exporter receives spans through the seam',
-        () async {
+    test('a consumer-built exporter receives spans through the seam', () async {
       await initializeOtelForCapture(adapter);
       OTel.tracer().startSpan('seam.span').end();
 
@@ -47,15 +46,17 @@ void main() {
       expect(attributes['service.name'], 'seam-test');
     });
 
-    test('a second call in the same process throws (dartastic contract)',
-        () async {
-      await initializeOtelForCapture(adapter);
-      // dartastic refuses to replace a registered provider with a StateError
-      // — the seam forwards that contract, it does not swallow it.
-      await expectLater(
-        initializeOtelForCapture(OtelAdapter()),
-        throwsStateError,
-      );
-    });
+    test(
+      'a second call in the same process throws (dartastic contract)',
+      () async {
+        await initializeOtelForCapture(adapter);
+        // dartastic refuses to replace a registered provider with a StateError
+        // — the seam forwards that contract, it does not swallow it.
+        await expectLater(
+          initializeOtelForCapture(OtelAdapter()),
+          throwsStateError,
+        );
+      },
+    );
   });
 }
