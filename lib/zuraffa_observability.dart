@@ -41,4 +41,5 @@ export 'src/facade.dart';
 export 'src/otel_adapter.dart';
 export 'src/otel_failure_reporter.dart';
 export 'src/otel_tracer.dart';
+export 'src/span_capture.dart';
 export 'src/telemetry_hook.dart';

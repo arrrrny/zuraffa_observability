@@ -1,3 +1,17 @@
+## 8.0.1 - 2026-11-19
+
+- `SpanCaptureAdapter` + `OtelTestHarness.bootForTesting` / `teardown` — the
+  facade-typed span capture a consumer test needs (arrrrny/zik_zak#961): the
+  pre-dartastic tests captured spans with the old package's SDK pieces
+  (`registerGlobalTracerProvider` + `SimpleSpanProcessor`), which the sealed
+  facade deliberately does not re-export — so a consumer test had no sanctioned
+  way to boot a recording SDK without importing an OTel package. The harness is
+  that seam: dartastic's SDK types stay inside this package, the consumer
+  asserts through core's `SimulationSpanCapture` vocabulary (`SpanSnapshot`).
+  `teardown()` releases dartastic's global SDK (`OTel.reset()`); a re-boot
+  pairs with a fresh capture, because the reset shuts the previous processor
+  (and with it the previous capture) down.
+
 ## 8.0.0 - 2026-11-19
 
 - **8.0.0 (breaking)** — the OTel base moved from the deprecated
