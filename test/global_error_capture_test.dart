@@ -204,31 +204,28 @@ void main() {
       },
     );
 
-    test(
-      'no failure entry is produced when the span flag is off',
-      () async {
-        // reportUncaughtAsSpan: false must skip the failure-reporter branch
-        // entirely — the uncaught error is still logged (test 1's SEVERE path),
-        // but nothing reaches the failure reporter queue.
-        final error = ArgumentError('boom-no-span');
-        final zone = await ZuraffaObservability.installGlobalErrorCapture(
-          reportUncaughtAsSpan: false,
-        );
-        zone.run(() {
-          scheduleMicrotask(() => throw error);
-        });
+    test('no failure entry is produced when the span flag is off', () async {
+      // reportUncaughtAsSpan: false must skip the failure-reporter branch
+      // entirely — the uncaught error is still logged (test 1's SEVERE path),
+      // but nothing reaches the failure reporter queue.
+      final error = ArgumentError('boom-no-span');
+      final zone = await ZuraffaObservability.installGlobalErrorCapture(
+        reportUncaughtAsSpan: false,
+      );
+      zone.run(() {
+        scheduleMicrotask(() => throw error);
+      });
 
-        await Future<void>.delayed(const Duration(milliseconds: 120));
-        await Zuraffa.flushFailureReports();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await Zuraffa.flushFailureReports();
 
-        expect(
-          failureReporter.reports,
-          isEmpty,
-          reason:
-              'with reportUncaughtAsSpan off, no failure report may reach the '
-              'reporters',
-        );
-      },
-    );
+      expect(
+        failureReporter.reports,
+        isEmpty,
+        reason:
+            'with reportUncaughtAsSpan off, no failure report may reach the '
+            'reporters',
+      );
+    });
   });
 }
