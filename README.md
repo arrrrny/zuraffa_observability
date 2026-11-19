@@ -30,7 +30,8 @@ Core keeps the light, vendor-free `TraceObserver` seam; call
 ## Features
 
 - `ZuraffaObservability` facade — `init()` wires the otel-backed
-  `TraceObserver`; `enableOtelReporting(...)` configures export
+  `TraceObserver`; `enableOtelReporting(...)` configures export;
+  `installGlobalErrorCapture(...)` arms the pure-Dart uncaught-error funnel
 - `OtelTracer` — OpenTelemetry tracer wrapper
 - `OtelFailureReporter` — reports use-case failures to otel
 - `TelemetryHook` — hook-instrumented pipeline spans
@@ -56,6 +57,60 @@ Then import the surface you need:
 ```dart
 import 'package:zuraffa_observability/zuraffa_observability.dart';
 ```
+
+## Complete capture wiring for a Flutter app
+
+This package is **pure Dart** (no Flutter dependency in `pubspec.yaml`, by
+design) — it owns the **export** side (OTLP traces + logs) and the **pure-Dart
+capture** half (zone/isolate uncaught errors). The Flutter widget-binding
+handlers live in a sibling package, and the whole app boots through core's
+guarded runner. Assemble all four pieces at startup:
+
+1. **Export side** — this package:
+   [`ZuraffaObservability.init()`] +
+   `ZuraffaObservability.enableOtelReporting(...)` wire the otel-backed
+   `TraceObserver`, the `OtelFailureReporter`, and (with `exportLogs: true`)
+   the `OtelLogExporter` that ships `WARNING`+ records to OTLP `/v1/logs`.
+2. **Pure-Dart capture** — this package:
+   [`ZuraffaObservability.installGlobalErrorCapture()`] forks the current zone
+   with an uncaught-error handler, so an error that escapes every
+   `try`/`catch` is logged at `SEVERE` (→ `OtelLogExporter`) and, with
+   `reportUncaughtAsSpan: true`, reported as a `failure.*` span via
+   `FailureReporterRegistry`. Run the app inside the returned zone (or boot
+   through step 4, which does this for you).
+3. **Flutter capture** — [`arrrrny/zuraffa_flutter`](https://github.com/arrrrny/zuraffa_flutter):
+   `ZuraffaFlutterErrorCapture.install()` wires `FlutterError.onError` and
+   `PlatformDispatcher.instance.onError` into the same funnel (these cannot
+   live here — no Flutter dependency).
+4. **Guarded boot** — [`arrrrny/zuraffa`](https://github.com/arrrrny/zuraffa):
+   boot the app through `Zuraffa.runGuarded(...)` so the root zone is guarded
+   and every uncaught error reaches the capture path armed in step 2.
+
+```dart
+import 'package:zuraffa/zuraffa.dart';
+import 'package:zuraffa_observability/zuraffa_observability.dart';
+// import 'package:zuraffa_flutter/zuraffa_flutter.dart'; // step 3
+
+Future<void> main() async {
+  ZuraffaObservability.init();                       // 1
+  await ZuraffaObservability.enableOtelReporting(     // 1
+    collectorEndpoint: Uri.parse('https://otel.example.com/v1/traces'),
+    serviceName: 'my_app',
+    exportLogs: true,
+  );
+  await ZuraffaObservability.installGlobalErrorCapture(); // 2
+  // ZuraffaFlutterErrorCapture.install();            // 3
+
+  // 4 — boot the app inside the guarded zone.
+  await Zuraffa.runGuarded(() async {
+    runApp(const MyApp());
+  });
+}
+```
+
+Because the capture funnels uncaught errors through `Logger`, they flow to
+SigNoz logs automatically through the already-registered `OtelLogExporter` —
+no new export path.
 
 ## Development
 
