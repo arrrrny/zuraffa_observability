@@ -153,6 +153,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.14"
+  dartastic_opentelemetry:
+    dependency: "direct main"
+    description:
+      name: dartastic_opentelemetry
+      sha256: "08d0d4f59a03abd659fecaec65309d5dfd610e3c3a29723121cef3d7a7790e97"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0-beta.17"
+  dartastic_opentelemetry_api:
+    dependency: transitive
+    description:
+      name: dartastic_opentelemetry_api
+      sha256: "3d6eb193a67565a9142bed6fcea3114adf38977f862507ea160559d4b1eed569"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0-rc.4"
   dartx:
     dependency: transitive
     description:
@@ -209,6 +225,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  google_cloud:
+    dependency: transitive
+    description:
+      name: google_cloud
+      sha256: b385e20726ef5315d302c5933bfb728103116c5be2d3d17094b01a82da538c1f
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.0"
+  google_identity_services_web:
+    dependency: transitive
+    description:
+      name: google_identity_services_web
+      sha256: "5d187c46dc59e02646e10fe82665fc3884a9b71bc1c90c2b8b749316d33ee454"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.3+1"
+  googleapis_auth:
+    dependency: transitive
+    description:
+      name: googleapis_auth
+      sha256: "6c37e60a7e9139b6cb143615b740663f427ffd5162f47c06eb8b9632fc217520"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.3.7"
+  grpc:
+    dependency: transitive
+    description:
+      name: grpc
+      sha256: "0cde49bc17f6b1e96c374ad1b5d389816cc8ade2015f24294eaa76193de87090"
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.2.0"
   hive_ce:
     dependency: transitive
     description:
@@ -225,6 +273,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.6.0"
+  http2:
+    dependency: transitive
+    description:
+      name: http2
+      sha256: "382d3aefc5bd6dc68c6b892d7664f29b5beb3251611ae946a98d35158a82bbfa"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.3.1"
   http_multi_server:
     dependency: transitive
     description:
@@ -305,22 +361,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.2"
-  opentelemetry:
-    dependency: "direct main"
-    description:
-      name: opentelemetry
-      sha256: f2c433064f5e4d8e3947883e0944dfa924928be76f5052089e2dd9873d2cafc4
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.18.11+1"
-  opentelemetry_wk:
-    dependency: transitive
-    description:
-      name: opentelemetry_wk
-      sha256: "6f95c96b4d997cbc2e8f92bd51038f8441ba27308a8876628c9b18e8e72a6537"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.18.11"
   package_config:
     dependency: transitive
     description:
@@ -473,6 +513,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  synchronized:
+    dependency: transitive
+    description:
+      name: synchronized
+      sha256: a77637ebe1460f3b48cac89a790d2eb634f0a8593cab0d3f340c6db174ba9b94
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.6.1+1"
   term_glyph:
     dependency: transitive
     description:

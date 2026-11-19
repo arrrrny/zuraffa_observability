@@ -1,17 +1,16 @@
-import 'package:opentelemetry/sdk.dart' as otel_sdk;
+import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart' as otel;
 import 'package:zuraffa/zuraffa.dart' show SimulationSpanCapture, SpanSnapshot;
 
 /// Certified OpenTelemetry simulation: a capture-and-assert exporter.
 ///
-/// Implements the REAL production [otel_sdk.SpanExporter] interface — the
-/// same interface the live OTLP/collector exporter implements — so
+/// Implements the REAL production dartastic [otel.SpanExporter] interface — the
+/// same interface the live OTLP/HTTP exporter implements — so
 /// `TelemetryHook`/`OtelTracer` pipelines run unchanged against it and
 /// every span ends up asserted from memory instead of shipped over the
 /// network. Moved here from the core simulation module by
 /// spec 1653-trim-heavy-deps (issue #1661): core consumes the light
 /// [SimulationSpanCapture] seam, the vendor-typed exporter lives here.
-final class OtelAdapter
-    implements otel_sdk.SpanExporter, SimulationSpanCapture {
+final class OtelAdapter implements otel.SpanExporter, SimulationSpanCapture {
   final List<SpanSnapshot> _captured = <SpanSnapshot>[];
   bool _shutdown = false;
 
@@ -39,18 +38,17 @@ final class OtelAdapter
   void reset() => _captured.clear();
 
   @override
-  void export(List<otel_sdk.ReadOnlySpan> spans) {
+  Future<void> export(List<otel.Span> spans) async {
     if (_shutdown) return;
     for (final span in spans) {
       final attributes = <String, Object>{};
-      for (final key in span.attributes.keys) {
-        final value = span.attributes.get(key);
-        if (value != null) attributes[key] = value;
+      for (final attribute in span.attributes.toList()) {
+        attributes[attribute.key] = attribute.value;
       }
       _captured.add(
         SpanSnapshot(
           name: span.name,
-          status: span.status.code,
+          status: span.status,
           attributes: attributes,
         ),
       );
@@ -58,12 +56,12 @@ final class OtelAdapter
   }
 
   @override
-  void forceFlush() {
+  Future<void> forceFlush() async {
     // In-memory capture: nothing to flush.
   }
 
   @override
-  void shutdown() {
+  Future<void> shutdown() async {
     _shutdown = true;
   }
 }

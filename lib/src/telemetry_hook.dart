@@ -1,4 +1,5 @@
-import 'package:opentelemetry/api.dart' show Attribute, Span;
+import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart'
+    show APISpan, Attributes;
 
 import 'package:zuraffa/zuraffa.dart' show Hook, HookContext, HookPhase;
 import 'otel_tracer.dart';
@@ -123,38 +124,36 @@ class TelemetryHook extends Hook {
     final spanName = '$spanNamePrefix.${context.useCaseName}';
     final span = OtelTracer.instance.startSpan(
       spanName,
-      attributes: [
-        Attribute.fromString('usecase.name', context.useCaseName),
-        Attribute.fromString('usecase.phase', 'started'),
-      ],
+      attributes: Attributes.of(<String, Object>{
+        'usecase.name': context.useCaseName,
+        'usecase.phase': 'started',
+      }),
     );
     // Stash the span in the shared metadata bag for later phases
     context.metadata[_spanKey] = span;
   }
 
   void _endSpanSuccess(HookContext context) {
-    final span = context.metadata[_spanKey] as Span?;
+    final span = context.metadata[_spanKey] as APISpan?;
     if (span == null) return;
 
+    final attributes = <String, Object>{'usecase.phase': 'success'};
     if (context.duration != null) {
-      span.setAttribute(
-        Attribute.fromInt(
-          'usecase.duration_ms',
-          context.duration!.inMilliseconds,
-        ),
-      );
+      attributes['usecase.duration_ms'] = context.duration!.inMilliseconds;
     }
-    span.setAttribute(Attribute.fromString('usecase.phase', 'success'));
+    span.addAttributes(Attributes.of(attributes));
 
     OtelTracer.instance.endSpan(span);
     context.metadata.remove(_spanKey);
   }
 
   void _endSpanFailure(HookContext context) {
-    final span = context.metadata[_spanKey] as Span?;
+    final span = context.metadata[_spanKey] as APISpan?;
     if (span == null) return;
 
-    span.setAttribute(Attribute.fromString('usecase.phase', 'failure'));
+    span.addAttributes(
+      Attributes.of(<String, Object>{'usecase.phase': 'failure'}),
+    );
 
     if (context.failure != null) {
       OtelTracer.instance.endSpanWithError(

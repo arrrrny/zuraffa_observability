@@ -1,12 +1,14 @@
-import 'package:opentelemetry/api.dart'
+import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart'
     show
-        Attribute,
-        StatusCode,
-        globalTracerProvider,
-        registerGlobalTracerProvider,
-        Tracer;
-import 'package:opentelemetry/sdk.dart'
-    show BatchSpanProcessor, CollectorExporter, Resource, TracerProviderBase;
+        APITracer,
+        APITracerProvider,
+        Attributes,
+        BatchSpanProcessor,
+        OtlpHttpExporterConfig,
+        OtlpHttpSpanExporter,
+        OTel,
+        SpanStatusCode,
+        TracerProvider;
 
 import 'otel_tracer.dart';
 
@@ -15,8 +17,8 @@ import 'package:zuraffa/zuraffa.dart';
 /// OpenTelemetry failure reporter — shipped opinionated with Zuraffa.
 ///
 /// Maps each [AppFailure] to an OTel Span with error status and enriched
-/// attributes. Uses [BatchSpanProcessor] + [CollectorExporter] for efficient
-/// delivery to any OTLP-compatible collector.
+/// attributes. Uses dartastic's [BatchSpanProcessor] + [OtlpHttpSpanExporter]
+/// for efficient delivery to any OTLP-compatible collector over OTLP/HTTP.
 ///
 /// ## Usage
 /// ```dart
@@ -48,7 +50,7 @@ class OtelFailureReporter extends FailureReporter {
   /// Optional instrumentation name (defaults to `zuraffa-failure-reporter`).
   final String instrumentationName;
 
-  late final Tracer _tracer;
+  late final APITracer _tracer;
 
   @override
   String get id => 'zuraffa-otel';
@@ -56,7 +58,7 @@ class OtelFailureReporter extends FailureReporter {
   /// The [OtelTracer] instance used to expose active span context to
   /// [ArtifactPublisher] for cross-referencing artifacts with traces.
   ///
-  /// Populated during [initialize] so that [ArtifactPublisher.spanContextProvider]
+  /// Populated during [initialize] so that `ArtifactPublisher.spanContextProvider`
   /// can capture the active trace/span IDs when an artifact is published.
   OtelTracer get tracer => OtelTracer.instance;
 
@@ -71,25 +73,41 @@ class OtelFailureReporter extends FailureReporter {
   Future<void> initialize() async {
     final Map<String, String> headers = apiKey != null
         ? {'Authorization': 'Bearer $apiKey'}
-        : {};
+        : <String, String>{};
 
-    final tracerProvider = TracerProviderBase(
-      resource: Resource([Attribute.fromString('service.name', serviceName)]),
-      processors: [
-        BatchSpanProcessor(
-          CollectorExporter(collectorEndpoint, headers: headers),
-        ),
-      ],
-    );
+    final endpoint = collectorEndpoint.toString();
 
+    // dartastic's equivalent of the old
+    // `TracerProviderBase(resource:, processors: [BatchSpanProcessor(...)])` +
+    // `registerGlobalTracerProvider`: OTel.initialize installs the global SDK
+    // provider, and the OTLP/HTTP exporter carries the collector endpoint and
+    // auth header over unchanged (the exporter appends `/v1/traces` itself when
+    // the endpoint does not already end with it).
+    //
+    // Metrics and logs stay off: this package owns its own log pipeline
+    // (OtelLogExporter) and never exported metrics, so dartastic must not
+    // configure either (issue #4 — out of scope).
     try {
-      registerGlobalTracerProvider(tracerProvider);
+      await OTel.initialize(
+        endpoint: endpoint,
+        serviceName: serviceName,
+        spanProcessor: BatchSpanProcessor(
+          OtlpHttpSpanExporter(
+            OtlpHttpExporterConfig(endpoint: endpoint, headers: headers),
+          ),
+        ),
+        enableMetrics: false,
+        enableLogs: false,
+        // Keep the resource to `service.name` (+ service.version), the way the
+        // pre-dartastic provider did, instead of merging host/arch detection.
+        detectPlatformResources: false,
+      );
     } on StateError {
-      // Already registered — reuse the existing global provider.
+      // Already initialized — reuse the existing global provider.
       // This happens when multiple OtelFailureReporters are created
       // (e.g., in tests) or when the app re-initializes.
     }
-    _tracer = globalTracerProvider.getTracer(instrumentationName);
+    _tracer = _globalTracerProvider().getTracer(instrumentationName);
 
     // Wire OtelTracer's active span context into ArtifactPublisher so that
     // every published artifact is automatically stamped with trace_id/span_id.
@@ -107,31 +125,22 @@ class OtelFailureReporter extends FailureReporter {
 
       try {
         // Set error status
-        span.setStatus(StatusCode.error, report.failure.message);
+        span.setStatus(SpanStatusCode.Error, report.failure.message);
 
         // Core attributes
-        span.setAttribute(
-          Attribute.fromString(
-            'failure.type',
-            report.failure.runtimeType.toString(),
-          ),
-        );
-        span.setAttribute(
-          Attribute.fromString('failure.message', report.failure.message),
-        );
-        span.setAttribute(
-          Attribute.fromString(
-            'failure.timestamp',
-            report.timestamp.toIso8601String(),
-          ),
+        span.addAttributes(
+          Attributes.of(<String, Object>{
+            'failure.type': report.failure.runtimeType.toString(),
+            'failure.message': report.failure.message,
+            'failure.timestamp': report.timestamp.toIso8601String(),
+          }),
         );
 
         if (report.failure.cause != null) {
-          span.setAttribute(
-            Attribute.fromString(
-              'failure.cause',
-              report.failure.cause.toString(),
-            ),
+          span.addAttributes(
+            Attributes.of(<String, Object>{
+              'failure.cause': report.failure.cause.toString(),
+            }),
           );
         }
 
@@ -140,11 +149,13 @@ class OtelFailureReporter extends FailureReporter {
 
         // User-provided attributes
         if (report.attributes != null) {
-          for (final entry in report.attributes!.entries) {
-            span.setAttribute(
-              Attribute.fromString(entry.key, entry.value.toString()),
-            );
-          }
+          span.addAttributes(
+            Attributes.of(
+              report.attributes!.map(
+                (key, value) => MapEntry<String, Object>(key, value.toString()),
+              ),
+            ),
+          );
         }
 
         // If a companion artifact was published for this failure, record it
@@ -153,9 +164,9 @@ class OtelFailureReporter extends FailureReporter {
         // navigate backward from storage to this span.
         final artifactId = report.attributes?['artifactId'];
         if (artifactId != null && artifactId.isNotEmpty) {
-          span.addEvent(
+          span.addEventNow(
             'artifact.published',
-            attributes: [Attribute.fromString('artifact.id', artifactId)],
+            Attributes.of(<String, Object>{'artifact.id': artifactId}),
           );
         }
 
@@ -176,95 +187,73 @@ class OtelFailureReporter extends FailureReporter {
 
   /// Add failure-type-specific attributes to the span.
   void _addFailureAttributes(dynamic span, AppFailure failure) {
+    void add(Map<String, Object> attributes) =>
+        span.addAttributes(Attributes.of(attributes));
+
     switch (failure) {
       case ServerFailure(:final statusCode):
         if (statusCode != null) {
-          span.setAttribute(Attribute.fromInt('http.status_code', statusCode));
+          add(<String, Object>{'http.status_code': statusCode});
         }
       case NetworkFailure():
-        span.setAttribute(Attribute.fromString('failure.category', 'network'));
+        add(<String, Object>{'failure.category': 'network'});
       case ValidationFailure(:final fieldErrors):
-        span.setAttribute(
-          Attribute.fromString('failure.category', 'validation'),
-        );
+        add(<String, Object>{'failure.category': 'validation'});
         if (fieldErrors != null) {
-          span.setAttribute(
-            Attribute.fromString('failure.fields', fieldErrors.keys.join(',')),
-          );
+          add(<String, Object>{'failure.fields': fieldErrors.keys.join(',')});
         }
       case NotFoundFailure(:final resourceType, :final resourceId):
-        span.setAttribute(
-          Attribute.fromString('failure.category', 'not_found'),
-        );
+        add(<String, Object>{'failure.category': 'not_found'});
         if (resourceType != null) {
-          span.setAttribute(
-            Attribute.fromString('failure.resource_type', resourceType),
-          );
+          add(<String, Object>{'failure.resource_type': resourceType});
         }
         if (resourceId != null) {
-          span.setAttribute(
-            Attribute.fromString('failure.resource_id', resourceId),
-          );
+          add(<String, Object>{'failure.resource_id': resourceId});
         }
       case UnauthorizedFailure():
-        span.setAttribute(Attribute.fromString('failure.category', 'auth'));
-        span.setAttribute(
-          Attribute.fromString('failure.auth_type', 'unauthorized'),
-        );
+        add(<String, Object>{
+          'failure.category': 'auth',
+          'failure.auth_type': 'unauthorized',
+        });
       case ForbiddenFailure(:final requiredPermission):
-        span.setAttribute(Attribute.fromString('failure.category', 'auth'));
-        span.setAttribute(
-          Attribute.fromString('failure.auth_type', 'forbidden'),
-        );
+        add(<String, Object>{
+          'failure.category': 'auth',
+          'failure.auth_type': 'forbidden',
+        });
         if (requiredPermission != null) {
-          span.setAttribute(
-            Attribute.fromString(
-              'failure.required_permission',
-              requiredPermission,
-            ),
-          );
+          add(<String, Object>{
+            'failure.required_permission': requiredPermission,
+          });
         }
       case TimeoutFailure(:final timeout):
-        span.setAttribute(Attribute.fromString('failure.category', 'timeout'));
+        add(<String, Object>{'failure.category': 'timeout'});
         if (timeout != null) {
-          span.setAttribute(
-            Attribute.fromInt('failure.timeout_ms', timeout.inMilliseconds),
-          );
+          add(<String, Object>{'failure.timeout_ms': timeout.inMilliseconds});
         }
       case ConflictFailure(:final conflictType):
-        span.setAttribute(Attribute.fromString('failure.category', 'conflict'));
+        add(<String, Object>{'failure.category': 'conflict'});
         if (conflictType != null) {
-          span.setAttribute(
-            Attribute.fromString('failure.conflict_type', conflictType),
-          );
+          add(<String, Object>{'failure.conflict_type': conflictType});
         }
       case CacheFailure():
-        span.setAttribute(Attribute.fromString('failure.category', 'cache'));
+        add(<String, Object>{'failure.category': 'cache'});
       case PlatformFailure(:final code):
-        span.setAttribute(Attribute.fromString('failure.category', 'platform'));
+        add(<String, Object>{'failure.category': 'platform'});
         if (code != null) {
-          span.setAttribute(
-            Attribute.fromString('failure.platform_code', code),
-          );
+          add(<String, Object>{'failure.platform_code': code});
         }
       case CancellationFailure():
-        span.setAttribute(
-          Attribute.fromString('failure.category', 'cancellation'),
-        );
+        add(<String, Object>{'failure.category': 'cancellation'});
       case StateFailure():
-        span.setAttribute(Attribute.fromString('failure.category', 'state'));
+        add(<String, Object>{'failure.category': 'state'});
       case TypeFailure():
-        span.setAttribute(Attribute.fromString('failure.category', 'type'));
+        add(<String, Object>{'failure.category': 'type'});
       case UnimplementedFailure():
-        span.setAttribute(
-          Attribute.fromString('failure.category', 'unimplemented'),
-        );
+        add(<String, Object>{'failure.category': 'unimplemented'});
       case UnsupportedFailure():
-        span.setAttribute(
-          Attribute.fromString('failure.category', 'unsupported'),
-        );
+        add(<String, Object>{'failure.category': 'unsupported'});
       case UnknownFailure():
-        span.setAttribute(Attribute.fromString('failure.category', 'unknown'));
+        add(<String, Object>{'failure.category': 'unknown'});
     }
   }
 
@@ -272,8 +261,32 @@ class OtelFailureReporter extends FailureReporter {
   Future<void> dispose() async {
     // BatchSpanProcessor buffers spans ended by reportBatch; flush the
     // global provider so teardown exports them instead of dropping them
-    // (review finding on #1678). TracerProviderBase.forceFlush() is
-    // synchronous in otel 0.18.x — no await needed.
-    globalTracerProvider.forceFlush();
+    // (review finding on #1678). dartastic's forceFlush is async, so it is
+    // awaited here.
+    await _flushGlobalProvider();
+  }
+}
+
+/// The global dartastic tracer provider, or the no-op API provider when the
+/// SDK was never initialized.
+APITracerProvider _globalTracerProvider() => otelTracerProvider();
+
+/// Flushes the global provider's span processors, when the SDK is live.
+///
+/// A no-op provider has no processors and no `forceFlush`, so an uninitialized
+/// SDK must not make [OtelFailureReporter.dispose] throw during teardown.
+Future<void> _flushGlobalProvider() async {
+  final provider = _sdkTracerProvider();
+  if (provider == null) return;
+  await provider.forceFlush();
+}
+
+/// The global SDK tracer provider, or `null` when dartastic was never
+/// initialized.
+TracerProvider? _sdkTracerProvider() {
+  try {
+    return OTel.tracerProvider();
+  } on StateError {
+    return null;
   }
 }
