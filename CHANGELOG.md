@@ -1,4 +1,4 @@
-## Unreleased
+## 8.0.0 - 2026-11-19
 
 - **8.0.0 (breaking)** — the OTel base moved from the deprecated
   `opentelemetry` package (Workiva re-export shim, `^0.18.11`) to
