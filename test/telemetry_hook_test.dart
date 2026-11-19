@@ -1,3 +1,4 @@
+import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart' as otel;
 import 'package:test/test.dart';
 import 'package:zuraffa/zuraffa.dart';
 import 'package:zuraffa_observability/zuraffa_observability.dart';
@@ -161,5 +162,67 @@ void main() {
       registry.dispatch(ctx, HookPhase.success);
       await Future.delayed(Duration(milliseconds: 50));
     });
+  });
+
+  // Issue #4: the migration is only wire-transparent if the span name and the
+  // attribute keys the hook emits are byte-for-byte what they were under the
+  // pre-dartastic base. Capture them through the real pipeline — hook →
+  // OtelTracer → dartastic SDK → OtelAdapter — and assert the exact shape.
+  group('wire format (simulation capture)', () {
+    late OtelAdapter capture;
+
+    setUp(() async {
+      capture = OtelAdapter();
+      await otel.OTel.reset();
+      await otel.OTel.initialize(
+        serviceName: 'telemetry-hook-test',
+        endpoint: 'http://127.0.0.1:4318',
+        spanProcessor: otel.SimpleSpanProcessor(capture),
+        enableMetrics: false,
+        enableLogs: false,
+        detectPlatformResources: false,
+      );
+    });
+
+    tearDown(() async {
+      await otel.OTel.reset();
+    });
+
+    test(
+      'a use case produces "usecase.<Name>" with the same attribute keys',
+      () async {
+        final hook = TelemetryHook();
+        final metadata = <String, Object?>{};
+
+        await hook.execute(
+          HookContext(
+            useCaseName: 'PlaceOrderUseCase',
+            timestamp: DateTime.now(),
+            metadata: metadata,
+          ),
+          HookPhase.pre,
+        );
+        await hook.execute(
+          HookContext(
+            useCaseName: 'PlaceOrderUseCase',
+            timestamp: DateTime.now(),
+            duration: const Duration(milliseconds: 12),
+            metadata: metadata,
+          ),
+          HookPhase.success,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        final span = capture.byName('usecase.PlaceOrderUseCase');
+        expect(
+          span,
+          isNotNull,
+          reason: 'captured: ${capture.spanNames.join(', ')}',
+        );
+        expect(span!.attributes['usecase.name'], 'PlaceOrderUseCase');
+        expect(span.attributes['usecase.phase'], 'success');
+        expect(span.attributes['usecase.duration_ms'], 12);
+      },
+    );
   });
 }

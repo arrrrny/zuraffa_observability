@@ -18,7 +18,8 @@ the otel-backed tracer, failure reporter, telemetry hook, and simulation
 span capture.
 
 This is an **optional companion package**: it carries the heavyweight
-`opentelemetry` dependency stack so that core-only consumers stay lean
+[`dartastic_opentelemetry`](https://pub.dev/packages/dartastic_opentelemetry)
+dependency stack so that core-only consumers stay lean
 (issue [#1661](https://github.com/arrrrny/zuraffa/issues/1661)). In zuraffa
 ≤6.x these APIs lived in `package:zuraffa` itself — see the
 [core CHANGELOG](https://github.com/arrrrny/zuraffa/blob/master/CHANGELOG.md)
@@ -26,6 +27,17 @@ for the full migration map.
 
 Core keeps the light, vendor-free `TraceObserver` seam; call
 `ZuraffaObservability.init` to wire the otel-backed observer into it.
+
+## Sealed facade
+
+The OTel value types a consumer needs — the span handle (`APISpan`), the
+attribute types (`Attribute` / `Attributes`), the ambient context (`Context`,
+`SpanContext`) and the status/span-kind enums — are re-exported from
+`package:zuraffa_observability/zuraffa_observability.dart`. **Import this
+package, never an OTel package**: reaching past the facade is what made the
+`opentelemetry` → `dartastic_opentelemetry` swap (issue
+[#4](https://github.com/arrrrny/zuraffa_observability/issues/4)) more
+expensive than it needed to be.
 
 ## Features
 

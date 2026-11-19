@@ -1,5 +1,35 @@
 ## Unreleased
 
+- **8.0.0 (breaking)** — the OTel base moved from the deprecated
+  `opentelemetry` package (Workiva re-export shim, `^0.18.11`) to
+  `dartastic_opentelemetry` 1.1.0-beta.17, the CNCF donation candidate whose
+  people now are the OpenTelemetry Dart & Flutter SIG (issue
+  [#4](https://github.com/arrrrny/zuraffa_observability/issues/4)). The tracer
+  pipeline, the OTLP/HTTP export path, the simulation capture-and-assert
+  adapter and the failure-reporter boot wiring were ported; span names,
+  attribute keys and the `enableOtelReporting(...)` signature are unchanged.
+  - `OtelTracer.startSpan` returns dartastic's `APISpan` and takes
+    `Attributes` instead of `List<Attribute>`; `startSpan` does **not**
+    activate — activation is `OtelTracer.trace` / `traceSync` (dartastic's
+    `withSpan`, zone-scoped) or `Context.current.withSpan(span).run(...)`.
+  - `StatusCode` is now `SpanStatusCode` (`Unset` / `Ok` / `Error`), and the
+    ambient span is read with `OtelTracer.spanFromContext([Context])` /
+    `OtelTracer.instance.currentSpanContext` — the sealed replacement for the
+    OTel packages' `spanFromContext(Context())`.
+  - **Sealed facade**: the span/attribute/context value types are re-exported
+    from `lib/zuraffa_observability.dart`, so downstream apps never import an
+    OTel package directly.
+  - `OtelFailureReporter` boots dartastic via `OTel.initialize` with
+    `BatchSpanProcessor` + `OtlpHttpSpanExporter` (the collector endpoint and
+    the `Authorization: Bearer` header carry over unchanged) and keeps the
+    dispose-time `forceFlush` (review finding on #1678); metrics/logs export
+    stay off, so the `Logger.root` → `OtelLogExporter` pipeline is untouched.
+  - New `test/zone_context_parity_test.dart`: an ambient span read inside
+    nested async execution, no bleed between two concurrent traces, and the
+    `traceSync` path.
+  - `OtelAdapter` implements dartastic's `SpanExporter` and captures the same
+    `SpanSnapshot` shape (name, status, attributes) the simulation
+    certification asserts on.
 - `ZuraffaObservability.installGlobalErrorCapture()` — the pure-Dart half of
   global error capture (issue #1): forks the current zone with an
   uncaught-error handler so an error that escapes every `try`/`catch` is
