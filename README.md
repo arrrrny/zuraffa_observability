@@ -42,7 +42,7 @@ Core keeps the light, vendor-free `TraceObserver` seam; call
 dart pub add zuraffa_observability
 ```
 
-Requires `zuraffa: ^7.5.0`.
+Requires `zuraffa: ^7.5.1`.
 
 ## Usage
 
@@ -117,7 +117,7 @@ no new export path.
 This repository is a standalone split from the core `zuraffa` monorepo
 (issue [#1690](https://github.com/arrrrny/zuraffa/issues/1690) §4) with full
 git history preserved. Its `pubspec.yaml` declares a hosted
-`zuraffa: ^7.5.0` constraint plus a `dependency_overrides` entry resolving
+`zuraffa: ^7.5.1` constraint plus a `dependency_overrides` entry resolving
 `zuraffa` to the local core checkout — so a sibling checkout of
 [arrrrny/zuraffa](https://github.com/arrrrny/zuraffa) at `../zuraffa` is
 required for `dart pub get`, `dart analyze`, and `dart test`:

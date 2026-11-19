@@ -1,4 +1,4 @@
-## Unreleased
+## 7.5.1 - 2026-11-19
 
 - `ZuraffaObservability.installGlobalErrorCapture()` — the pure-Dart half of
   global error capture (issue #1): forks the current zone with an
@@ -7,6 +7,9 @@
   with `reportUncaughtAsSpan: true`, reported as a `failure.*` span via
   `FailureReporterRegistry`. README documents the full Flutter capture wiring
   across `zuraffa` / `zuraffa_flutter` / `zuraffa_observability`.
+
+Purely additive patch release: a consumer resolving `^7.5.0` can now reach the
+capture API without a master pin (zuraffa#2106).
 
 ## 7.5.0 - 2026-11-15
 
@@ -58,4 +61,3 @@ Mono-version fleet alignment to 7.3.2: outbound send port lands in zuraffa_inten
 - Publish shape for independent releases: hosted `zuraffa: ^7.0.0`
   constraint with a local-sibling `dependency_overrides` entry for
   development.
-
