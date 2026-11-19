@@ -37,6 +37,8 @@ export 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart'
         TraceId,
         TraceState;
 
+export 'package:zuraffa/zuraffa.dart' show SimulationSpanCapture, SpanSnapshot;
+
 export 'src/facade.dart';
 export 'src/otel_adapter.dart';
 export 'src/otel_failure_reporter.dart';
