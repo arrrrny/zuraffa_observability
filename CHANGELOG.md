@@ -1,3 +1,7 @@
+## 7.6.1 - 2026-11-20
+
+7.6.1: pub.dev score improvements across the fleet — added a pana-recognized example/README.md to 12 packages (zuraffa_observability, session, storage, graphql, minio, tui, ffi, vendure, flutter, inappwebview, ocr, purchase); cleared all analyzer infos in zuraffa and zuraffa_flutter (deprecated flutter/material.dart -> material_ui, withOpacity -> withValues) for 50/50 static analysis.
+
 ## 7.6.0 - 2026-11-19
 
 - **7.6.0** — the OTel base moved from the deprecated

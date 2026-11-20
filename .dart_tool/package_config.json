@@ -483,19 +483,19 @@
     },
     {
       "name": "zorphy",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zorphy-2.4.6",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zorphy-2.5.1",
       "packageUri": "lib/",
-      "languageVersion": "3.8"
+      "languageVersion": "3.11"
     },
     {
       "name": "zorphy_annotation",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zorphy_annotation-2.4.6",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zorphy_annotation-2.5.1",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "zuraffa",
-      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zuraffa-7.5.0",
+      "rootUri": "file:///Users/arrrrny/.pub-cache/hosted/pub.dev/zuraffa-7.6.0",
       "packageUri": "lib/",
       "languageVersion": "3.11"
     },
