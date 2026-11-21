@@ -117,12 +117,12 @@ is first touched. **The Flutter binding must be initialized inside the zone
    `ensureInitialized()` inside it.
 
 **Why:** `WidgetsFlutterBinding.ensureInitialized()` records `Zone.current`
-(`BindingBase._debugBindingZone`), and Flutter's `runApp` asserts
-`debugCheckZone('runApp')` against it on every call. A consumer that already
-called `ensureInitialized()` earlier in `main()` ends up with the binding in the
-root zone and `runApp` in the capture zone → `Zone mismatch.` per boot
-(debug-only assert; routed to telemetry as a `failure.*` span, which also
-pollutes the funnel's output — the failure zik_zak#1031 hit).
+(`BindingBase._debugBindingZone`), and Flutter's `runApp` (via `_runWidget`)
+asserts `debugCheckZone('runApp')` against it on every call. A consumer that
+already called `ensureInitialized()` earlier in `main()` ends up with the
+binding in the root zone and `runApp` in the capture zone → `Zone mismatch.`
+per boot (debug-only assert; routed to telemetry as a `failure.*` span, which
+also pollutes the funnel's output — the failure zik_zak#1031 hit).
 
 ```dart
 import 'package:flutter/widgets.dart';
