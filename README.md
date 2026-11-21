@@ -98,24 +98,61 @@ guarded runner. Assemble all four pieces at startup:
    boot the app through `Zuraffa.runGuarded(...)` so the root zone is guarded
    and every uncaught error reaches the capture path armed in step 2.
 
+### Binding-zone ordering rule — initialize the Flutter binding *inside* the guarded boot zone
+
+The order of steps 2 and 4 is load-bearing, and so is where the Flutter binding
+is first touched. **The Flutter binding must be initialized inside the zone
+`runApp` runs in.** Concretely:
+
+1. Fork the capture zone **before the first binding touch** — call
+   `installGlobalErrorCapture()` at the very top of `main()`, ahead of any
+   `ensureInitialized()` (explicit, or implicit through packages such as
+   `dotenv.load()` / `Hive.initFlutter()`, both of which initialize the binding
+   internally).
+2. Run the **entire boot** — not only `runApp` — inside the returned zone:
+   every binding touch the boot makes must execute in the zone the mount runs
+   in (`captureZone.run(() async { ...boot steps...; runApp(app); })`).
+3. Re-entry paths (a second `main()` call in integration tests) must enter the
+   same armed zone around their `runApp`, with the (idempotent)
+   `ensureInitialized()` inside it.
+
+**Why:** `WidgetsFlutterBinding.ensureInitialized()` records `Zone.current`
+(`BindingBase._debugBindingZone`), and Flutter's `runApp` asserts
+`debugCheckZone('runApp')` against it on every call. A consumer that already
+called `ensureInitialized()` earlier in `main()` ends up with the binding in the
+root zone and `runApp` in the capture zone → `Zone mismatch.` per boot
+(debug-only assert; routed to telemetry as a `failure.*` span, which also
+pollutes the funnel's output — the failure zik_zak#1031 hit).
+
 ```dart
+import 'package:flutter/widgets.dart';
 import 'package:zuraffa/zuraffa.dart';
 import 'package:zuraffa_observability/zuraffa_observability.dart';
 // import 'package:zuraffa_flutter/zuraffa_flutter.dart'; // step 3
 
 Future<void> main() async {
-  ZuraffaObservability.init();                       // 1
-  await ZuraffaObservability.enableOtelReporting(     // 1
-    collectorEndpoint: Uri.parse('https://otel.example.com/v1/traces'),
-    serviceName: 'my_app',
-    exportLogs: true,
-  );
-  await ZuraffaObservability.installGlobalErrorCapture(); // 2
-  // ZuraffaFlutterErrorCapture.install();            // 3
+  // 2 — fork the capture zone FIRST, before anything touches the binding
+  //     (directly or through dotenv / Hive / package:flutter).
+  final captureZone =
+      await ZuraffaObservability.installGlobalErrorCapture();
 
-  // 4 — boot the app inside the guarded zone.
-  await Zuraffa.runGuarded(() async {
-    runApp(const MyApp());
+  await captureZone.run(() async {
+    // 1 — export side. Every binding touch below runs INSIDE `captureZone`,
+    //     so the binding's recorded zone matches the one `runApp` mounts in.
+    ZuraffaObservability.init();
+    await ZuraffaObservability.enableOtelReporting(
+      collectorEndpoint: Uri.parse('https://otel.example.com/v1/traces'),
+      serviceName: 'my_app',
+      exportLogs: true,
+    );
+    // ZuraffaFlutterErrorCapture.install();        // 3
+    WidgetsFlutterBinding.ensureInitialized();    // idempotent; inside the zone
+
+    // 4 — guarded boot: the whole boot, runApp included, is already in the
+    //     capture zone; runGuarded adds core's own uncaught-error handling.
+    await Zuraffa.runGuarded(() async {
+      runApp(const MyApp());
+    });
   });
 }
 ```
